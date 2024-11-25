@@ -4,7 +4,11 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/smirnova-daria/url-shortener/internal/config"
+	mwLogger "github.com/smirnova-daria/url-shortener/internal/http-server/middleware/logger"
+	"github.com/smirnova-daria/url-shortener/internal/lib/logger/handlers/slogpretty"
 	"github.com/smirnova-daria/url-shortener/internal/lib/logger/sl"
 	"github.com/smirnova-daria/url-shortener/internal/storage/sqlite"
 )
@@ -29,6 +33,13 @@ func main() {
 	}
 
 	_ = storage
+
+	router := chi.NewRouter()
+	router.Use(middleware.RequestID)
+	router.Use(mwLogger.New(log))
+	router.Use(middleware.Recoverer)
+	router.Use(middleware.URLFormat)
+
 }
 
 func setupLogger(env string) *slog.Logger {
@@ -36,9 +47,7 @@ func setupLogger(env string) *slog.Logger {
 
 	switch env {
 	case envLocal:
-		log = slog.New(
-			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
+		log = setupPrettySlog()
 	case envDev:
 		log = slog.New(
 			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
@@ -49,4 +58,16 @@ func setupLogger(env string) *slog.Logger {
 		)
 	}
 	return log
+}
+
+func setupPrettySlog() *slog.Logger {
+	opts := slogpretty.PrettyHandlerOptions{
+		SlogOpts: &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		},
+	}
+
+	handler := opts.NewPrettyHandler(os.Stdout)
+
+	return slog.New(handler)
 }
