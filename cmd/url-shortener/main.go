@@ -2,11 +2,13 @@ package main
 
 import (
 	"log/slog"
+	"net/http"
 	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/smirnova-daria/url-shortener/internal/config"
+	"github.com/smirnova-daria/url-shortener/internal/http-server/handlers/url/save"
 	mwLogger "github.com/smirnova-daria/url-shortener/internal/http-server/middleware/logger"
 	"github.com/smirnova-daria/url-shortener/internal/lib/logger/handlers/slogpretty"
 	"github.com/smirnova-daria/url-shortener/internal/lib/logger/sl"
@@ -39,6 +41,21 @@ func main() {
 	router.Use(mwLogger.New(log))
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
+
+	router.Post("/url", save.New(log, storage))
+
+	log.Info("starting server", slog.String("address", cfg.Address))
+	srv := &http.Server{
+		Addr:         cfg.Address,
+		Handler:      router,
+		ReadTimeout:  cfg.HTTPServer.Timeout,
+		WriteTimeout: cfg.HTTPServer.Timeout,
+		IdleTimeout:  cfg.HTTPServer.IdleTimeout,
+	}
+
+	if err := srv.ListenAndServe(); err != nil {
+		log.Error("failed to start server")
+	}
 
 }
 
