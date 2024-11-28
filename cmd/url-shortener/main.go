@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/smirnova-daria/url-shortener/internal/config"
+	"github.com/smirnova-daria/url-shortener/internal/http-server/handlers/url/redirect"
 	"github.com/smirnova-daria/url-shortener/internal/http-server/handlers/url/save"
 	mwLogger "github.com/smirnova-daria/url-shortener/internal/http-server/middleware/logger"
 	"github.com/smirnova-daria/url-shortener/internal/lib/logger/handlers/slogpretty"
@@ -43,6 +44,7 @@ func main() {
 	router.Use(middleware.URLFormat)
 
 	router.Post("/url", save.New(log, storage))
+	router.Get("/{alias}", redirect.New(log, storage))
 
 	log.Info("starting server", slog.String("address", cfg.Address))
 	srv := &http.Server{
